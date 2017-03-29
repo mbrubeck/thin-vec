@@ -257,7 +257,32 @@ impl<T> ThinVec<T> {
     }
 
     pub fn shrink_to_fit(&mut self) {
-        // TODO
+        let elem_size = mem::size_of::<T>();
+        if elem_size == 0 {
+            // TODO
+            return
+        }
+
+        let len = self.len();
+        let old_cap = self.capacity();
+        if old_cap == len {
+            return
+        }
+
+        if len == 0 {
+            mem::replace(self, ThinVec::new());
+        } else {
+            self.ptr = unsafe {
+                heap::reallocate(self.ptr() as *mut u8,
+                                 alloc_size::<T>(old_cap),
+                                 alloc_size::<T>(len),
+                                 mem::align_of::<Header>()) as *mut Header
+            };
+            if self.ptr.is_null() {
+                oom()
+            }
+            self.header_mut().cap = len;
+        }
     }
 
     pub fn retain<F>(&mut self, f: F) where F: FnMut(&T) -> bool { 
